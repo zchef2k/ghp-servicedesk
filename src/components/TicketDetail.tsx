@@ -11,6 +11,7 @@ import {
   type Ticket,
 } from '../lib/github';
 import { findLabel, PRIORITY_LABELS, replaceLabel, STATUS_LABELS, CATEGORY_LABELS } from '../lib/labels';
+import { appPath } from '../lib/url';
 
 export default function TicketDetail({ number }: { number: number }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -52,7 +53,7 @@ export default function TicketDetail({ number }: { number: number }) {
 
   return (
     <div>
-      <a href={import.meta.env.BASE_URL} className="text-sm text-slate-500 hover:underline">
+      <a href={appPath()} className="text-sm text-slate-500 hover:underline">
         ← Back to queue
       </a>
 

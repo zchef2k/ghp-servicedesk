@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { createTicket } from '../lib/github';
 import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '../lib/labels';
+import { appPath } from '../lib/url';
 
 export default function NewTicketForm() {
   const [title, setTitle] = useState('');
@@ -20,7 +21,7 @@ export default function NewTicketForm() {
         body,
         labels: [STATUS_LABELS[0], priority, category],
       });
-      window.location.href = `${import.meta.env.BASE_URL}ticket/?id=${ticket.number}`;
+      window.location.href = appPath(`ticket/?id=${ticket.number}`);
     } catch (err: any) {
       setError(err.message ?? 'Failed to create ticket');
       setSubmitting(false);

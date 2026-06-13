@@ -2,25 +2,16 @@
 // GitHub OAuth `code` for an access token. This is the only piece that holds
 // the OAuth App's client secret.
 //
+// CORS is handled entirely by the Function URL's CORS configuration (see
+// lambda/README.md) — do not add Access-Control-* headers here, or browsers
+// will reject the response due to duplicate headers.
+//
 // Required environment variables:
 //   GITHUB_CLIENT_ID      - GitHub OAuth App client ID
 //   GITHUB_CLIENT_SECRET  - GitHub OAuth App client secret
-//   ALLOWED_ORIGIN        - origin of the GitHub Pages site, e.g. https://<user>.github.io
-
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
 
 export const handler = async (event) => {
   const method = event.requestContext?.http?.method ?? event.httpMethod;
-
-  if (method === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS_HEADERS, body: '' };
-  }
 
   if (method !== 'POST') {
     return respond(405, { error: 'method_not_allowed' });
@@ -63,7 +54,7 @@ export const handler = async (event) => {
 function respond(statusCode, body) {
   return {
     statusCode,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   };
 }

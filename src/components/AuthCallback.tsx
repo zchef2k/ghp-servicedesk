@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { exchangeCodeForToken, setToken } from '../lib/auth';
+import { appPath } from '../lib/url';
 
 export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,7 @@ export default function AuthCallback() {
     exchangeCodeForToken(code)
       .then((token) => {
         setToken(token);
-        window.location.href = import.meta.env.BASE_URL;
+        window.location.href = appPath();
       })
       .catch((err) => setError(err.message ?? 'Token exchange failed'));
   }, []);
@@ -25,7 +26,7 @@ export default function AuthCallback() {
     return (
       <div className="py-16 text-center">
         <p className="text-red-600">{error}</p>
-        <a href={import.meta.env.BASE_URL} className="mt-4 inline-block text-sm hover:underline">
+        <a href={appPath()} className="mt-4 inline-block text-sm hover:underline">
           Back to home
         </a>
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listTickets, type Ticket } from '../lib/github';
 import { findLabel, PRIORITY_LABELS, STATUS_LABELS } from '../lib/labels';
+import { appPath } from '../lib/url';
 
 const PRIORITY_STYLES: Record<string, string> = {
   'priority:urgent': 'bg-red-100 text-red-800',
@@ -71,7 +72,7 @@ export default function TicketQueue() {
             return (
               <li key={ticket.number}>
                 <a
-                  href={`${import.meta.env.BASE_URL}ticket/?id=${ticket.number}`}
+                  href={appPath(`ticket/?id=${ticket.number}`)}
                   className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-slate-50"
                 >
                   <div className="min-w-0">

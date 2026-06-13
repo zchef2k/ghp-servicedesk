@@ -25,14 +25,16 @@ OAuth App's client secret.
      --handler index.handler \
      --zip-file fileb://function.zip \
      --role <your-lambda-execution-role-arn> \
-     --environment "Variables={GITHUB_CLIENT_ID=<client-id>,GITHUB_CLIENT_SECRET=<client-secret>,ALLOWED_ORIGIN=https://<username>.github.io}"
+     --environment "Variables={GITHUB_CLIENT_ID=<client-id>,GITHUB_CLIENT_SECRET=<client-secret>}"
    ```
 
    The execution role only needs the basic `AWSLambdaBasicExecutionRole`
    (CloudWatch Logs) — no other AWS permissions are required.
 
-4. **Create a Function URL** with no auth (the function does its own
-   validation; access is limited by CORS to your Pages origin):
+4. **Create a Function URL** with no auth. CORS is handled entirely by this
+   Function URL configuration — the function code itself does not set any
+   `Access-Control-*` headers (setting them in both places causes duplicate
+   headers, which browsers reject):
 
    ```sh
    aws lambda create-function-url-config \
