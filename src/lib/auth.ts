@@ -4,7 +4,10 @@ const TOKEN_KEY = 'ghp_servicedesk_token';
 
 /** Builds the URL to redirect the user to for GitHub's OAuth consent screen. */
 export function getLoginUrl(): string {
-  const redirectUri = new URL('auth/callback', window.location.origin + import.meta.env.BASE_URL);
+  const base = import.meta.env.BASE_URL.endsWith('/')
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+  const redirectUri = new URL('auth/callback', window.location.origin + base);
   const params = new URLSearchParams({
     client_id: config.githubOAuthClientId,
     scope: config.githubOAuthScope,
