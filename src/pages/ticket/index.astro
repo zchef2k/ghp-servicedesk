@@ -1,0 +1,8 @@
+---
+import Base from '../../layouts/Base.astro';
+import TicketDetailPage from '../../components/pages/TicketDetailPage';
+---
+
+<Base title="Ticket">
+  <TicketDetailPage client:only="react" />
+</Base>
