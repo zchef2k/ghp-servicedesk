@@ -4,6 +4,7 @@ import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS } from '..
 import { searchArticles } from '../lib/kbSearch';
 import { useImagePaste } from '../lib/useImagePaste';
 import { appPath } from '../lib/url';
+import MarkdownToolbar from './MarkdownToolbar';
 
 export default function NewTicketForm() {
   const [title, setTitle] = useState('');
@@ -58,6 +59,7 @@ export default function NewTicketForm() {
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium">Description (Markdown)</span>
+        <MarkdownToolbar textareaRef={textareaRef} setValue={setBody} />
         <textarea
           ref={textareaRef}
           value={body}
@@ -65,7 +67,7 @@ export default function NewTicketForm() {
           onPaste={onPaste}
           onDrop={onDrop}
           rows={6}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-b-md rounded-t-none border border-slate-300 px-3 py-2 text-sm"
         />
         <span className="mt-1 block text-xs text-slate-500">
           Markdown supported — paste or drop images to attach them.

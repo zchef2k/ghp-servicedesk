@@ -4,6 +4,7 @@ import { findLabel, replaceLabel, CATEGORY_LABELS } from '../lib/labels';
 import { useImagePaste } from '../lib/useImagePaste';
 import { appPath } from '../lib/url';
 import Markdown from './Markdown';
+import MarkdownToolbar from './MarkdownToolbar';
 
 export default function KbArticle({ number }: { number: number }) {
   const [article, setArticle] = useState<Ticket | null>(null);
@@ -62,6 +63,7 @@ export default function KbArticle({ number }: { number: number }) {
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium">Body (Markdown)</span>
+            <MarkdownToolbar textareaRef={textareaRef} setValue={setBody} />
             <textarea
               ref={textareaRef}
               value={body}
@@ -69,7 +71,7 @@ export default function KbArticle({ number }: { number: number }) {
               onPaste={onPaste}
               onDrop={onDrop}
               rows={12}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+              className="w-full rounded-b-md rounded-t-none border border-slate-300 px-3 py-2 font-mono text-sm"
             />
             <span className="mt-1 block text-xs text-slate-500">
               Paste or drop images to attach them.

@@ -26,6 +26,7 @@ import { ageHours, formatDuration, isOverdue, slaHours } from '../lib/sla';
 import { useImagePaste } from '../lib/useImagePaste';
 import { appPath } from '../lib/url';
 import Markdown from './Markdown';
+import MarkdownToolbar from './MarkdownToolbar';
 
 function stashedCommentsKey(number: number) {
   return `recentComments:${number}`;
@@ -299,6 +300,7 @@ export default function TicketDetail({ number }: { number: number }) {
       </ul>
 
       <div className="mt-3">
+        <MarkdownToolbar textareaRef={textareaRef} setValue={setNewComment} />
         <textarea
           ref={textareaRef}
           value={newComment}
@@ -307,7 +309,7 @@ export default function TicketDetail({ number }: { number: number }) {
           onDrop={onDrop}
           placeholder="Add a comment… (Markdown supported — paste or drop images to attach them)"
           rows={3}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-b-md rounded-t-none border border-slate-300 px-3 py-2 text-sm"
         />
         {status === 'status:waiting-on-requester' && currentUser === ticket.author && (
           <p className="mt-1 text-xs text-slate-500">
