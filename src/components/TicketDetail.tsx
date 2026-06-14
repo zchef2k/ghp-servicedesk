@@ -135,7 +135,7 @@ export default function TicketDetail({ number }: { number: number }) {
   return (
     <div>
       <a href={appPath()} className="text-sm text-slate-500 hover:underline">
-        ← Back to queue
+        ← Back to tickets
       </a>
 
       <h1 className="mt-2 text-xl font-semibold">
