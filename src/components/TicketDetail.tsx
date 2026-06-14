@@ -18,6 +18,8 @@ import {
   replaceLabel,
   STATUS_LABELS,
   CATEGORY_LABELS,
+  TYPE_LABELS,
+  transitionRequiresNote,
   type StatusLabel,
 } from '../lib/labels';
 import { ageHours, formatDuration, isOverdue, slaHours } from '../lib/sla';
@@ -55,7 +57,7 @@ export default function TicketDetail({ number }: { number: number }) {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [pendingStatus, setPendingStatus] = useState<StatusLabel | null>(null);
-  const [resolutionNote, setResolutionNote] = useState('');
+  const [transitionNote, setTransitionNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -92,15 +94,17 @@ export default function TicketDetail({ number }: { number: number }) {
   const status = findLabel(current.labels, STATUS_LABELS);
   const priority = findLabel(current.labels, PRIORITY_LABELS);
   const category = findLabel(current.labels, CATEGORY_LABELS);
-  const statusOptions = status ? [status, ...nextStatuses(status)] : STATUS_LABELS;
+  const type = findLabel(current.labels, TYPE_LABELS);
+  const statusOptions = status ? [status, ...nextStatuses(status, type)] : STATUS_LABELS;
   const overdue = isOverdue(current);
   const target = slaHours(current);
+  const isApproval = pendingStatus === 'status:in-progress' && status === 'status:pending-approval';
 
   function handleStatusChange(newStatus: StatusLabel) {
     if (newStatus === status) return;
-    if (newStatus === 'status:resolved') {
+    if (transitionRequiresNote(status, newStatus)) {
       setPendingStatus(newStatus);
-      setResolutionNote('');
+      setTransitionNote('');
       return;
     }
     withBusy(async () => {
@@ -109,18 +113,18 @@ export default function TicketDetail({ number }: { number: number }) {
     });
   }
 
-  function confirmResolve() {
-    if (!resolutionNote.trim() || !pendingStatus) return;
+  function confirmTransition() {
+    if (!transitionNote.trim() || !pendingStatus) return;
     withBusy(async () => {
       const { ticket: updated, comment } = await transitionTicketStatus({
         number: current.number,
         labels: current.labels,
         newStatus: pendingStatus,
-        resolutionComment: resolutionNote.trim(),
+        note: transitionNote.trim(),
       });
       setTicket(updated);
       setPendingStatus(null);
-      setResolutionNote('');
+      setTransitionNote('');
       if (comment) {
         setComments((prev) => [...prev, comment]);
         stashComment(current.number, comment);
@@ -154,6 +158,25 @@ export default function TicketDetail({ number }: { number: number }) {
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <Field label="Type">
+          <select
+            disabled={busy}
+            value={type ?? ''}
+            onChange={(e) =>
+              withBusy(async () => {
+                const labels = replaceLabel(ticket.labels, e.target.value);
+                setTicket(await updateTicketLabels(ticket.number, labels));
+              })
+            }
+            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+          >
+            <option value="" disabled>Select type</option>
+            {TYPE_LABELS.map((l) => (
+              <option key={l} value={l}>{l.replace('type:', '')}</option>
+            ))}
+          </select>
+        </Field>
+
         <Field label="Status">
           <select
             disabled={busy}
@@ -226,32 +249,33 @@ export default function TicketDetail({ number }: { number: number }) {
         </Field>
       </div>
 
-      {pendingStatus === 'status:resolved' && (
+      {pendingStatus && (
         <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-medium text-amber-900">
-            Resolving this ticket requires a resolution note. It will be posted as a comment and the
-            ticket will be closed.
+            {isApproval
+              ? 'Approving this change requires an approval note. It will be posted as a comment.'
+              : 'Resolving this ticket requires a resolution note. It will be posted as a comment and the ticket will be closed.'}
           </p>
           <textarea
-            value={resolutionNote}
-            onChange={(e) => setResolutionNote(e.target.value)}
-            placeholder="Describe how this was resolved…"
+            value={transitionNote}
+            onChange={(e) => setTransitionNote(e.target.value)}
+            placeholder={isApproval ? 'Describe what was approved…' : 'Describe how this was resolved…'}
             rows={3}
             className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
           <div className="mt-2 flex gap-2">
             <button
-              disabled={busy || !resolutionNote.trim()}
-              onClick={confirmResolve}
+              disabled={busy || !transitionNote.trim()}
+              onClick={confirmTransition}
               className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
             >
-              Resolve ticket
+              {isApproval ? 'Approve change' : 'Resolve ticket'}
             </button>
             <button
               disabled={busy}
               onClick={() => {
                 setPendingStatus(null);
-                setResolutionNote('');
+                setTransitionNote('');
               }}
               className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium hover:bg-slate-50"
             >

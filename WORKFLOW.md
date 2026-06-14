@@ -11,11 +11,27 @@ status transitions implemented in [`src/lib/labels.ts`](src/lib/labels.ts)
 - **Agent** — anyone assigned to work the ticket (must be a collaborator on
   the data repo).
 
+## Ticket types
+
+Every ticket has a `type:*` label, set at creation and changeable like
+priority/category:
+
+| Type | Meaning |
+| :-- | :-- |
+| `type:incident` | Something is broken; restore normal service. |
+| `type:service-request` | A standard request (access, provisioning, etc.). |
+| `type:change` | A planned change that requires sign-off before work begins. |
+
+`type:change` tickets follow an extra approval step — see
+`status:pending-approval` below. Other types skip straight from `open` to
+`in-progress`.
+
 ## Statuses
 
 | Status | Meaning | Underlying issue state |
 | :-- | :-- | :-- |
 | `status:open` | New, not yet picked up by an agent. | `open` |
+| `status:pending-approval` | (`type:change` only) Awaiting approval before work begins. | `open` |
 | `status:in-progress` | An agent is actively working the ticket. | `open` |
 | `status:waiting-on-requester` | The agent needs more info or action from the requester before continuing. | `open` |
 | `status:resolved` | The work is done. A resolution note has been recorded. | `closed` |
@@ -27,10 +43,12 @@ ticket *out* of `status:resolved` reopens the issue.
 
 ```
 status:open ──────────────┬──> status:in-progress ──┬──> status:waiting-on-requester ──┐
-                           │           │ ^            │                                 │
-                           │           │ └─────────────┘ (requester comments)           │
-                           │           │                                                 │
-                           └───────────┴────────────────────────────> status:resolved <─┘
+       │                   │           │ ^            │                                 │
+       │ (type:change)     │           │ └─────────────┘ (requester comments)           │
+       ▼                   │           │                                                 │
+status:pending-approval ───┘           │                                                 │
+       │                                │                                                 │
+       └────────────────────────────────┴───────────────────────────> status:resolved <─┘
                                           ^                                   │
                                           └───────────────────────────────────┘
                                             (reopen: in-progress or open)
@@ -38,7 +56,8 @@ status:open ──────────────┬──> status:in-progr
 
 | From | Allowed next |
 | :-- | :-- |
-| `status:open` | `status:in-progress`, `status:resolved` |
+| `status:open` | `status:in-progress`, `status:resolved` — or, for `type:change`, `status:pending-approval`, `status:resolved` |
+| `status:pending-approval` | `status:in-progress` (approve), `status:open` (reject) |
 | `status:in-progress` | `status:waiting-on-requester`, `status:resolved`, `status:open` |
 | `status:waiting-on-requester` | `status:in-progress`, `status:resolved` |
 | `status:resolved` | `status:in-progress`, `status:open` (reopen) |
@@ -70,6 +89,14 @@ describing how the issue was resolved. The UI prompts for this note and posts
 it before closing the issue. A ticket cannot be silently closed without a
 record of what was done.
 
+## Approving a change
+
+For `type:change` tickets, moving from `status:pending-approval` to
+`status:in-progress` requires an **approval note**: a comment recording what
+was approved (and by whom, implicitly — the commenter). Rejecting a change
+moves it back to `status:open` (no note required) so the requester can revise
+and resubmit.
+
 ## Priority and category
 
 `priority:*` and `category:*` labels are independent of the lifecycle above
@@ -95,7 +122,8 @@ resolved). Any unresolved ticket older than its priority's target is flagged
 
 ## Metrics
 
-The `/metrics` page summarizes the current queue: open-ticket counts by status
-and priority, the overdue count, average age of open tickets, and resolution
-throughput (tickets resolved in the last 7/30 days, average resolution time).
-It's a read-only view over the same data — no separate tracking is needed.
+The queue page opens with a summary of the current state: open-ticket counts
+by status and priority, the overdue count, average age of open tickets, and
+resolution throughput (tickets resolved in the last 7/30 days, average
+resolution time). It's a read-only view over the same data shown in the queue
+below — no separate tracking is needed.

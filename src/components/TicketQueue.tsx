@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listTickets, type Ticket } from '../lib/github';
-import { findLabel, PRIORITY_LABELS, STATUS_LABELS } from '../lib/labels';
+import { findLabel, PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS } from '../lib/labels';
 import { ageHours, formatDuration, isOverdue } from '../lib/sla';
 import { appPath } from '../lib/url';
 
@@ -16,10 +16,11 @@ export default function TicketQueue() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('');
   const [includeClosed, setIncludeClosed] = useState(false);
 
   useEffect(() => {
-    const labels = [statusFilter, priorityFilter].filter(Boolean);
+    const labels = [statusFilter, priorityFilter, typeFilter].filter(Boolean);
     listTickets({ state: includeClosed ? 'all' : 'open', labels })
       .then((fetched) => {
         // A just-created ticket may not show up yet due to GitHub's
@@ -38,11 +39,12 @@ export default function TicketQueue() {
         }
         const matchesStatus = !statusFilter || recent.labels.includes(statusFilter);
         const matchesPriority = !priorityFilter || recent.labels.includes(priorityFilter);
+        const matchesType = !typeFilter || recent.labels.includes(typeFilter);
         const matchesState = includeClosed || recent.state === 'open';
-        setTickets(matchesStatus && matchesPriority && matchesState ? [recent, ...fetched] : fetched);
+        setTickets(matchesStatus && matchesPriority && matchesType && matchesState ? [recent, ...fetched] : fetched);
       })
       .catch((err) => setError(err.message ?? 'Failed to load tickets'));
-  }, [statusFilter, priorityFilter, includeClosed]);
+  }, [statusFilter, priorityFilter, typeFilter, includeClosed]);
 
   if (error) return <p className="text-red-600">{error}</p>;
   if (tickets === null) return <p className="text-slate-500">Loading tickets…</p>;
@@ -72,6 +74,17 @@ export default function TicketQueue() {
           ))}
         </select>
 
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+        >
+          <option value="">All types</option>
+          {TYPE_LABELS.map((l) => (
+            <option key={l} value={l}>{l.replace('type:', '')}</option>
+          ))}
+        </select>
+
         <label className="flex items-center gap-2 text-sm text-slate-600">
           <input
             type="checkbox"
@@ -89,6 +102,7 @@ export default function TicketQueue() {
           {tickets.map((ticket) => {
             const status = findLabel(ticket.labels, STATUS_LABELS);
             const priority = findLabel(ticket.labels, PRIORITY_LABELS);
+            const type = findLabel(ticket.labels, TYPE_LABELS);
             const overdue = isOverdue(ticket);
             return (
               <li key={ticket.number}>
@@ -102,6 +116,7 @@ export default function TicketQueue() {
                     </p>
                     <p className="text-sm text-slate-500">
                       {ticket.state === 'closed' ? 'Closed' : status?.replace('status:', '') ?? 'open'}
+                      {type && ` · ${type.replace('type:', '')}`}
                       {ticket.assignees.length > 0 && ` · ${ticket.assignees.join(', ')}`}
                       {` · ${formatDuration(ageHours(ticket))} old`}
                     </p>

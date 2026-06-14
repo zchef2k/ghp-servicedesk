@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { createTicket } from '../lib/github';
-import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '../lib/labels';
+import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS } from '../lib/labels';
 import { appPath } from '../lib/url';
 
 export default function NewTicketForm() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [type, setType] = useState<string>(TYPE_LABELS[0]);
   const [priority, setPriority] = useState<string>(PRIORITY_LABELS[1]);
   const [category, setCategory] = useState<string>(CATEGORY_LABELS[3]);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export default function NewTicketForm() {
       const ticket = await createTicket({
         title: title.trim(),
         body,
-        labels: [STATUS_LABELS[0], priority, category],
+        labels: [STATUS_LABELS[0], type, priority, category],
       });
       // GitHub's issue-list endpoint can lag a few seconds after creation, so
       // stash the new ticket for the queue to show immediately.
@@ -55,7 +56,20 @@ export default function NewTicketForm() {
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">Type</span>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+          >
+            {TYPE_LABELS.map((l) => (
+              <option key={l} value={l}>{l.replace('type:', '')}</option>
+            ))}
+          </select>
+        </label>
+
         <label className="block">
           <span className="mb-1 block text-sm font-medium">Priority</span>
           <select

@@ -89,24 +89,24 @@ export async function updateTicketLabels(number: number, labels: string[]): Prom
 
 /**
  * Moves a ticket to `newStatus`, per the transitions in WORKFLOW.md. Posts
- * `resolutionComment` first (required by the UI when resolving) and keeps the
- * underlying issue's open/closed state in sync: `status:resolved` closes the
- * issue, any other status reopens it.
+ * `note` first as a comment (required by the UI for resolution and change
+ * approval) and keeps the underlying issue's open/closed state in sync:
+ * `status:resolved` closes the issue, any other status reopens it.
  */
 export async function transitionTicketStatus(opts: {
   number: number;
   labels: string[];
   newStatus: StatusLabel;
-  resolutionComment?: string;
+  note?: string;
 }): Promise<{ ticket: Ticket; comment?: Comment }> {
   const client = getClient();
 
   let comment: Comment | undefined;
-  if (opts.resolutionComment?.trim()) {
+  if (opts.note?.trim()) {
     const { data } = await client.issues.createComment({
       ...dataRepo,
       issue_number: opts.number,
-      body: opts.resolutionComment.trim(),
+      body: opts.note.trim(),
     });
     comment = {
       id: data.id,

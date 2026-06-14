@@ -30,6 +30,7 @@ these labels at `https://github.com/<owner>/ghp-servicedesk-data/labels`
 
 **Status**
 - `status:open`
+- `status:pending-approval`
 - `status:in-progress`
 - `status:waiting-on-requester`
 - `status:resolved`
@@ -46,12 +47,18 @@ these labels at `https://github.com/<owner>/ghp-servicedesk-data/labels`
 - `category:access`
 - `category:other`
 
+**Type**
+- `type:incident`
+- `type:service-request`
+- `type:change`
+
 You can create these via the UI or with the GitHub CLI:
 
 ```sh
-for l in status:open status:in-progress status:waiting-on-requester status:resolved \
+for l in status:open status:pending-approval status:in-progress status:waiting-on-requester status:resolved \
          priority:low priority:medium priority:high priority:urgent \
-         category:hardware category:software category:access category:other; do
+         category:hardware category:software category:access category:other \
+         type:incident type:service-request type:change; do
   gh label create "$l" --repo <owner>/ghp-servicedesk-data
 done
 ```
