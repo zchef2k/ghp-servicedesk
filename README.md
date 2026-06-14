@@ -73,9 +73,9 @@ Images pasted or dropped into ticket/comment/article fields are committed to
 this repo under `images/` via the Git Data API. Collaborators' OAuth tokens
 already have `repo` write access here (same as everything else), so no extra
 setup is needed — the first paste just adds commits to `images/` on `main`.
-These images render inline in the app via an authenticated fetch; they won't
-display if the issue is viewed directly on github.com (see
-[WORKFLOW.md](WORKFLOW.md#markdown-and-images)).
+They're referenced via a standard GitHub blob `?raw=true` URL, which renders
+inline both in the app and on github.com's issue view, as long as the viewer
+is signed into github.com (see [WORKFLOW.md](WORKFLOW.md#markdown-and-images)).
 
 ### 2. Create a GitHub OAuth App
 

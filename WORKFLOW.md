@@ -150,8 +150,8 @@ Ticket descriptions, ticket comments, and KB articles all support Markdown
 everywhere.
 
 You can paste or drop an image directly into any of these fields. It's
-uploaded to the data repo (`images/` folder) and referenced in the Markdown
-as `repo-asset:images/<file>`. This app resolves those references and renders
-the image inline. Note that this is an app-specific convention — if you view
-the underlying issue directly on github.com, pasted images will show as
-broken links; they only render inside this app.
+uploaded to the data repo (`images/` folder) and referenced in the Markdown as
+a standard GitHub blob URL (`https://github.com/<owner>/ghp-servicedesk-data/blob/main/images/<file>?raw=true`).
+This renders inline both in this app and when viewing the underlying issue
+directly on github.com — as long as the viewer is signed into github.com,
+since the data repo is private.
