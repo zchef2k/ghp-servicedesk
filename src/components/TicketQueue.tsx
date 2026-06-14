@@ -28,9 +28,10 @@ export default function TicketQueue() {
           setTickets(fetched);
           return;
         }
-        sessionStorage.removeItem('recentTicket');
         const recent: Ticket = JSON.parse(raw);
         if (fetched.some((t) => t.number === recent.number)) {
+          // GitHub's index has caught up; stop pinning the stub.
+          sessionStorage.removeItem('recentTicket');
           setTickets(fetched);
           return;
         }
