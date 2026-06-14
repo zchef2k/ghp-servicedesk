@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { config } from './config';
 import { getToken } from './auth';
+import { findLabel, replaceLabel, STATUS_LABELS, type StatusLabel } from './labels';
 
 /** Creates an Octokit client authenticated as the logged-in user. Throws if not logged in. */
 export function getClient(): Octokit {
@@ -84,15 +85,53 @@ export async function updateTicketLabels(number: number, labels: string[]): Prom
   return toTicket(data);
 }
 
-export async function setTicketAssignees(number: number, assignees: string[]): Promise<Ticket> {
+/**
+ * Moves a ticket to `newStatus`, per the transitions in WORKFLOW.md. Posts
+ * `resolutionComment` first (required by the UI when resolving) and keeps the
+ * underlying issue's open/closed state in sync: `status:resolved` closes the
+ * issue, any other status reopens it.
+ */
+export async function transitionTicketStatus(opts: {
+  number: number;
+  labels: string[];
+  newStatus: StatusLabel;
+  resolutionComment?: string;
+}): Promise<Ticket> {
   const client = getClient();
-  const { data } = await client.issues.update({ ...dataRepo, issue_number: number, assignees });
+
+  if (opts.resolutionComment?.trim()) {
+    await client.issues.createComment({
+      ...dataRepo,
+      issue_number: opts.number,
+      body: opts.resolutionComment.trim(),
+    });
+  }
+
+  const labels = replaceLabel(opts.labels, opts.newStatus);
+  const state = opts.newStatus === 'status:resolved' ? 'closed' : 'open';
+  const { data } = await client.issues.update({ ...dataRepo, issue_number: opts.number, labels, state });
   return toTicket(data);
 }
 
-export async function setTicketState(number: number, state: 'open' | 'closed'): Promise<Ticket> {
+/**
+ * Sets assignees. If the ticket is still `status:open` and is being assigned
+ * to someone, also bumps it to `status:in-progress` (assignment signals work
+ * has started).
+ */
+export async function setTicketAssignees(
+  number: number,
+  assignees: string[],
+  labels: string[]
+): Promise<Ticket> {
   const client = getClient();
-  const { data } = await client.issues.update({ ...dataRepo, issue_number: number, state });
+  const shouldStart = assignees.length > 0 && findLabel(labels, STATUS_LABELS) === 'status:open';
+  const nextLabels = shouldStart ? replaceLabel(labels, 'status:in-progress') : labels;
+  const { data } = await client.issues.update({
+    ...dataRepo,
+    issue_number: number,
+    assignees,
+    labels: nextLabels,
+  });
   return toTicket(data);
 }
 
@@ -114,15 +153,49 @@ export async function listComments(number: number): Promise<Comment[]> {
   }));
 }
 
-export async function addComment(number: number, body: string): Promise<Comment> {
+/**
+ * Posts a comment. If the commenter is the ticket's requester and the ticket
+ * is `status:waiting-on-requester`, also moves it back to `status:in-progress`
+ * to put it back in the agent's queue (per WORKFLOW.md).
+ */
+export async function addComment(opts: {
+  number: number;
+  body: string;
+  labels: string[];
+  isRequester: boolean;
+}): Promise<{ comment: Comment; ticket?: Ticket }> {
   const client = getClient();
-  const { data } = await client.issues.createComment({ ...dataRepo, issue_number: number, body });
-  return {
+  const { data } = await client.issues.createComment({
+    ...dataRepo,
+    issue_number: opts.number,
+    body: opts.body,
+  });
+  const comment: Comment = {
     id: data.id,
     body: data.body ?? '',
     author: data.user?.login ?? 'unknown',
     createdAt: data.created_at,
   };
+
+  if (opts.isRequester && findLabel(opts.labels, STATUS_LABELS) === 'status:waiting-on-requester') {
+    const labels = replaceLabel(opts.labels, 'status:in-progress');
+    const { data: issueData } = await client.issues.update({
+      ...dataRepo,
+      issue_number: opts.number,
+      labels,
+      state: 'open',
+    });
+    return { comment, ticket: toTicket(issueData) };
+  }
+
+  return { comment };
+}
+
+/** Returns the username of the currently authenticated user. */
+export async function getCurrentUser(): Promise<string> {
+  const client = getClient();
+  const { data } = await client.users.getAuthenticated();
+  return data.login;
 }
 
 /** Fetches collaborators on the data repo, for use as assignee options. */

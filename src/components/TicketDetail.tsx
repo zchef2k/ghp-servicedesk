@@ -1,23 +1,35 @@
 import { useEffect, useState } from 'react';
 import {
   addComment,
+  getCurrentUser,
   getTicket,
   listAssignableUsers,
   listComments,
   setTicketAssignees,
-  setTicketState,
+  transitionTicketStatus,
   updateTicketLabels,
   type Comment,
   type Ticket,
 } from '../lib/github';
-import { findLabel, PRIORITY_LABELS, replaceLabel, STATUS_LABELS, CATEGORY_LABELS } from '../lib/labels';
+import {
+  findLabel,
+  nextStatuses,
+  PRIORITY_LABELS,
+  replaceLabel,
+  STATUS_LABELS,
+  CATEGORY_LABELS,
+  type StatusLabel,
+} from '../lib/labels';
 import { appPath } from '../lib/url';
 
 export default function TicketDetail({ number }: { number: number }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<string[]>([]);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [pendingStatus, setPendingStatus] = useState<StatusLabel | null>(null);
+  const [resolutionNote, setResolutionNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -28,9 +40,11 @@ export default function TicketDetail({ number }: { number: number }) {
   }
 
   useEffect(() => {
-    Promise.all([refresh(), listAssignableUsers().then(setAssignableUsers)]).catch((err) =>
-      setError(err.message ?? 'Failed to load ticket')
-    );
+    Promise.all([
+      refresh(),
+      listAssignableUsers().then(setAssignableUsers),
+      getCurrentUser().then(setCurrentUser),
+    ]).catch((err) => setError(err.message ?? 'Failed to load ticket'));
   }, [number]);
 
   async function withBusy(fn: () => Promise<void>) {
@@ -47,9 +61,39 @@ export default function TicketDetail({ number }: { number: number }) {
   if (error) return <p className="text-red-600">{error}</p>;
   if (!ticket) return <p className="text-slate-500">Loading ticket…</p>;
 
-  const status = findLabel(ticket.labels, STATUS_LABELS);
-  const priority = findLabel(ticket.labels, PRIORITY_LABELS);
-  const category = findLabel(ticket.labels, CATEGORY_LABELS);
+  const current = ticket;
+  const status = findLabel(current.labels, STATUS_LABELS);
+  const priority = findLabel(current.labels, PRIORITY_LABELS);
+  const category = findLabel(current.labels, CATEGORY_LABELS);
+  const statusOptions = status ? [status, ...nextStatuses(status)] : STATUS_LABELS;
+
+  function handleStatusChange(newStatus: StatusLabel) {
+    if (newStatus === status) return;
+    if (newStatus === 'status:resolved') {
+      setPendingStatus(newStatus);
+      setResolutionNote('');
+      return;
+    }
+    withBusy(async () => {
+      setTicket(await transitionTicketStatus({ number: current.number, labels: current.labels, newStatus }));
+    });
+  }
+
+  function confirmResolve() {
+    if (!resolutionNote.trim() || !pendingStatus) return;
+    withBusy(async () => {
+      const updated = await transitionTicketStatus({
+        number: current.number,
+        labels: current.labels,
+        newStatus: pendingStatus,
+        resolutionComment: resolutionNote.trim(),
+      });
+      setTicket(updated);
+      setPendingStatus(null);
+      setResolutionNote('');
+      setComments(await listComments(number));
+    });
+  }
 
   return (
     <div>
@@ -73,16 +117,11 @@ export default function TicketDetail({ number }: { number: number }) {
           <select
             disabled={busy}
             value={status ?? ''}
-            onChange={(e) =>
-              withBusy(async () => {
-                const labels = replaceLabel(ticket.labels, e.target.value);
-                setTicket(await updateTicketLabels(ticket.number, labels));
-              })
-            }
+            onChange={(e) => handleStatusChange(e.target.value as StatusLabel)}
             className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
           >
             <option value="" disabled>Select status</option>
-            {STATUS_LABELS.map((l) => (
+            {statusOptions.map((l) => (
               <option key={l} value={l}>{l.replace('status:', '')}</option>
             ))}
           </select>
@@ -133,7 +172,7 @@ export default function TicketDetail({ number }: { number: number }) {
             onChange={(e) =>
               withBusy(async () => {
                 const assignees = e.target.value ? [e.target.value] : [];
-                setTicket(await setTicketAssignees(ticket.number, assignees));
+                setTicket(await setTicketAssignees(ticket.number, assignees, ticket.labels));
               })
             }
             className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
@@ -144,22 +183,42 @@ export default function TicketDetail({ number }: { number: number }) {
             ))}
           </select>
         </Field>
-
-        <Field label="State">
-          <button
-            disabled={busy}
-            onClick={() =>
-              withBusy(async () => {
-                const next = ticket.state === 'closed' ? 'open' : 'closed';
-                setTicket(await setTicketState(ticket.number, next));
-              })
-            }
-            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50"
-          >
-            {ticket.state === 'closed' ? 'Reopen' : 'Close ticket'}
-          </button>
-        </Field>
       </div>
+
+      {pendingStatus === 'status:resolved' && (
+        <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3">
+          <p className="text-sm font-medium text-amber-900">
+            Resolving this ticket requires a resolution note. It will be posted as a comment and the
+            ticket will be closed.
+          </p>
+          <textarea
+            value={resolutionNote}
+            onChange={(e) => setResolutionNote(e.target.value)}
+            placeholder="Describe how this was resolved…"
+            rows={3}
+            className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              disabled={busy || !resolutionNote.trim()}
+              onClick={confirmResolve}
+              className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              Resolve ticket
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => {
+                setPendingStatus(null);
+                setResolutionNote('');
+              }}
+              className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <h2 className="mt-6 text-lg font-semibold">Comments</h2>
       <ul className="mt-2 space-y-3">
@@ -179,12 +238,23 @@ export default function TicketDetail({ number }: { number: number }) {
           rows={3}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
+        {status === 'status:waiting-on-requester' && currentUser === ticket.author && (
+          <p className="mt-1 text-xs text-slate-500">
+            Commenting will move this ticket back to in-progress.
+          </p>
+        )}
         <button
           disabled={busy || !newComment.trim()}
           onClick={() =>
             withBusy(async () => {
-              const comment = await addComment(ticket.number, newComment.trim());
-              setComments((prev) => [...prev, comment]);
+              const result = await addComment({
+                number: ticket.number,
+                body: newComment.trim(),
+                labels: ticket.labels,
+                isRequester: currentUser === ticket.author,
+              });
+              setComments((prev) => [...prev, result.comment]);
+              if (result.ticket) setTicket(result.ticket);
               setNewComment('');
             })
           }

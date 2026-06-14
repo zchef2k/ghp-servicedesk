@@ -25,7 +25,8 @@ tool, but worth knowing.
 
 Create a private GitHub repo (e.g. `ghp-servicedesk-data`) under the same
 account/org. Add team members as collaborators with write access. Then create
-these labels (Settings → Labels):
+these labels at `https://github.com/<owner>/ghp-servicedesk-data/labels`
+(Issues tab → Labels):
 
 **Status**
 - `status:open`

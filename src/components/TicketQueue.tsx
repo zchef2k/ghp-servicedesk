@@ -20,7 +20,25 @@ export default function TicketQueue() {
   useEffect(() => {
     const labels = [statusFilter, priorityFilter].filter(Boolean);
     listTickets({ state: includeClosed ? 'all' : 'open', labels })
-      .then(setTickets)
+      .then((fetched) => {
+        // A just-created ticket may not show up yet due to GitHub's
+        // issue-list indexing lag, so merge it in if it matches the filters.
+        const raw = sessionStorage.getItem('recentTicket');
+        if (!raw) {
+          setTickets(fetched);
+          return;
+        }
+        sessionStorage.removeItem('recentTicket');
+        const recent: Ticket = JSON.parse(raw);
+        if (fetched.some((t) => t.number === recent.number)) {
+          setTickets(fetched);
+          return;
+        }
+        const matchesStatus = !statusFilter || recent.labels.includes(statusFilter);
+        const matchesPriority = !priorityFilter || recent.labels.includes(priorityFilter);
+        const matchesState = includeClosed || recent.state === 'open';
+        setTickets(matchesStatus && matchesPriority && matchesState ? [recent, ...fetched] : fetched);
+      })
       .catch((err) => setError(err.message ?? 'Failed to load tickets'));
   }, [statusFilter, priorityFilter, includeClosed]);
 
