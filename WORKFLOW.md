@@ -127,3 +127,18 @@ by status and priority, the overdue count, average age of open tickets, and
 resolution throughput (tickets resolved in the last 7/30 days, average
 resolution time). It's a read-only view over the same data shown in the queue
 below — no separate tracking is needed.
+
+## Knowledge base
+
+KB articles are issues in the data repo tagged `kb:article`, optionally with
+a `category:*` label (the same categories used for tickets). They're created
+and edited from the **Knowledge Base** page (`/kb`), with article bodies
+rendered as Markdown.
+
+Articles tagged `kb:article` are excluded from the ticket queue and metrics —
+they're never tickets, just docs stored alongside them.
+
+While filling out a new ticket, the form does live client-side keyword
+matching against article titles/bodies and shows a "Related articles" box if
+anything looks relevant, so a requester can self-serve instead of filing a
+ticket.

@@ -52,13 +52,17 @@ these labels at `https://github.com/<owner>/ghp-servicedesk-data/labels`
 - `type:service-request`
 - `type:change`
 
+**Knowledge base**
+- `kb:article`
+
 You can create these via the UI or with the GitHub CLI:
 
 ```sh
 for l in status:open status:pending-approval status:in-progress status:waiting-on-requester status:resolved \
          priority:low priority:medium priority:high priority:urgent \
          category:hardware category:software category:access category:other \
-         type:incident type:service-request type:change; do
+         type:incident type:service-request type:change \
+         kb:article; do
   gh label create "$l" --repo <owner>/ghp-servicedesk-data
 done
 ```

@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
-import { createTicket } from '../lib/github';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { createTicket, listArticles, type Ticket } from '../lib/github';
 import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS } from '../lib/labels';
+import { searchArticles } from '../lib/kbSearch';
 import { appPath } from '../lib/url';
 
 export default function NewTicketForm() {
@@ -11,6 +12,13 @@ export default function NewTicketForm() {
   const [category, setCategory] = useState<string>(CATEGORY_LABELS[3]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [articles, setArticles] = useState<Ticket[]>([]);
+
+  useEffect(() => {
+    listArticles().then(setArticles).catch(() => {});
+  }, []);
+
+  const suggestions = useMemo(() => searchArticles(articles, `${title} ${body}`, 3), [articles, title, body]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -96,6 +104,27 @@ export default function NewTicketForm() {
           </select>
         </label>
       </div>
+
+      {suggestions.length > 0 && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+          <p className="text-sm font-medium text-blue-900">Related articles</p>
+          <p className="text-sm text-blue-800">This might already answer your question:</p>
+          <ul className="mt-2 space-y-1">
+            {suggestions.map((article) => (
+              <li key={article.number}>
+                <a
+                  href={appPath(`kb/article/?id=${article.number}`)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-blue-700 underline hover:text-blue-900"
+                >
+                  {article.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && <p className="text-red-600">{error}</p>}
 

@@ -1,0 +1,8 @@
+---
+import Base from '../../layouts/Base.astro';
+import NewArticlePage from '../../components/pages/NewArticlePage';
+---
+
+<Base title="New Article">
+  <NewArticlePage client:only="react" />
+</Base>

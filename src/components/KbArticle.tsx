@@ -1,0 +1,129 @@
+import { useEffect, useState } from 'react';
+import { marked } from 'marked';
+import { getArticle, updateArticle, type Ticket } from '../lib/github';
+import { findLabel, replaceLabel, CATEGORY_LABELS } from '../lib/labels';
+import { appPath } from '../lib/url';
+
+export default function KbArticle({ number }: { number: number }) {
+  const [article, setArticle] = useState<Ticket | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [category, setCategory] = useState<string>('');
+
+  useEffect(() => {
+    getArticle(number)
+      .then((a) => {
+        setArticle(a);
+        setTitle(a.title);
+        setBody(a.body);
+        setCategory(findLabel(a.labels, CATEGORY_LABELS) ?? '');
+      })
+      .catch((err) => setError(err.message ?? 'Failed to load article'));
+  }, [number]);
+
+  if (error) return <p className="text-red-600">{error}</p>;
+  if (!article) return <p className="text-slate-500">Loading article…</p>;
+
+  async function save() {
+    setBusy(true);
+    try {
+      const labels = category ? replaceLabel(article!.labels, category) : article!.labels;
+      const updated = await updateArticle(article!.number, { title: title.trim(), body, labels });
+      setArticle(updated);
+      setEditing(false);
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to save article');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <a href={appPath('kb')} className="text-sm text-slate-500 hover:underline">
+        ← Back to knowledge base
+      </a>
+
+      {editing ? (
+        <div className="mt-2 space-y-4">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">Title</span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">Body (Markdown)</span>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={12}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium">Category</span>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value="">None</option>
+              {CATEGORY_LABELS.map((l) => (
+                <option key={l} value={l}>{l.replace('category:', '')}</option>
+              ))}
+            </select>
+          </label>
+
+          {error && <p className="text-red-600">{error}</p>}
+
+          <div className="flex gap-2">
+            <button
+              disabled={busy || !title.trim()}
+              onClick={save}
+              className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                setTitle(article.title);
+                setBody(article.body);
+                setCategory(findLabel(article.labels, CATEGORY_LABELS) ?? '');
+              }}
+              className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <h1 className="text-xl font-semibold">{article.title}</h1>
+            <button
+              onClick={() => setEditing(true)}
+              className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+            >
+              Edit
+            </button>
+          </div>
+
+          <div
+            className="kb-article mt-4 rounded-md border border-slate-200 bg-white p-4"
+            dangerouslySetInnerHTML={{ __html: marked.parse(article.body || '*No content.*', { async: false }) }}
+          />
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { config } from './config';
 import { getToken } from './auth';
-import { findLabel, replaceLabel, STATUS_LABELS, type StatusLabel } from './labels';
+import { findLabel, replaceLabel, STATUS_LABELS, KB_LABEL, type StatusLabel } from './labels';
 
 /** Creates an Octokit client authenticated as the logged-in user. Throws if not logged in. */
 export function getClient(): Octokit {
@@ -57,7 +57,9 @@ export async function listTickets(opts: {
     labels: opts.labels?.join(','),
     per_page: 100,
   });
-  return data.filter((issue) => !issue.pull_request).map(toTicket);
+  return data
+    .filter((issue) => !issue.pull_request && !issue.labels.some((l: any) => (typeof l === 'string' ? l : l.name) === KB_LABEL))
+    .map(toTicket);
 }
 
 export async function getTicket(number: number): Promise<Ticket> {
@@ -77,6 +79,46 @@ export async function createTicket(opts: {
     title: opts.title,
     body: opts.body,
     labels: opts.labels,
+  });
+  return toTicket(data);
+}
+
+/** Lists knowledge-base articles (issues tagged `kb:article`). Excludes pull requests. */
+export async function listArticles(): Promise<Ticket[]> {
+  const client = getClient();
+  const { data } = await client.issues.listForRepo({
+    ...dataRepo,
+    state: 'open',
+    labels: KB_LABEL,
+    per_page: 100,
+  });
+  return data.filter((issue) => !issue.pull_request).map(toTicket);
+}
+
+export async function getArticle(number: number): Promise<Ticket> {
+  return getTicket(number);
+}
+
+export async function createArticle(opts: {
+  title: string;
+  body: string;
+  category?: string;
+}): Promise<Ticket> {
+  const labels = [KB_LABEL, ...(opts.category ? [opts.category] : [])];
+  return createTicket({ title: opts.title, body: opts.body, labels });
+}
+
+export async function updateArticle(
+  number: number,
+  opts: { title?: string; body?: string; labels?: string[] }
+): Promise<Ticket> {
+  const client = getClient();
+  const { data } = await client.issues.update({
+    ...dataRepo,
+    issue_number: number,
+    ...(opts.title !== undefined ? { title: opts.title } : {}),
+    ...(opts.body !== undefined ? { body: opts.body } : {}),
+    ...(opts.labels !== undefined ? { labels: opts.labels } : {}),
   });
   return toTicket(data);
 }

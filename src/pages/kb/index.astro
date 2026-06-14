@@ -1,0 +1,8 @@
+---
+import Base from '../../layouts/Base.astro';
+import KbListPage from '../../components/pages/KbListPage';
+---
+
+<Base title="Knowledge Base">
+  <KbListPage client:only="react" />
+</Base>

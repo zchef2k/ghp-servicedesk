@@ -29,6 +29,9 @@ export const TYPE_LABELS = [
   'type:change',
 ] as const;
 
+/** Marks an issue as a knowledge-base article rather than a ticket. */
+export const KB_LABEL = 'kb:article';
+
 export type StatusLabel = (typeof STATUS_LABELS)[number];
 export type PriorityLabel = (typeof PRIORITY_LABELS)[number];
 export type CategoryLabel = (typeof CATEGORY_LABELS)[number];
