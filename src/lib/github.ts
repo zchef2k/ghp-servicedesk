@@ -96,21 +96,28 @@ export async function transitionTicketStatus(opts: {
   labels: string[];
   newStatus: StatusLabel;
   resolutionComment?: string;
-}): Promise<Ticket> {
+}): Promise<{ ticket: Ticket; comment?: Comment }> {
   const client = getClient();
 
+  let comment: Comment | undefined;
   if (opts.resolutionComment?.trim()) {
-    await client.issues.createComment({
+    const { data } = await client.issues.createComment({
       ...dataRepo,
       issue_number: opts.number,
       body: opts.resolutionComment.trim(),
     });
+    comment = {
+      id: data.id,
+      body: data.body ?? '',
+      author: data.user?.login ?? 'unknown',
+      createdAt: data.created_at,
+    };
   }
 
   const labels = replaceLabel(opts.labels, opts.newStatus);
   const state = opts.newStatus === 'status:resolved' ? 'closed' : 'open';
   const { data } = await client.issues.update({ ...dataRepo, issue_number: opts.number, labels, state });
-  return toTicket(data);
+  return { ticket: toTicket(data), comment };
 }
 
 /**

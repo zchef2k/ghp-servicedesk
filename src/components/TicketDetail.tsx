@@ -22,6 +22,31 @@ import {
 } from '../lib/labels';
 import { appPath } from '../lib/url';
 
+function stashedCommentsKey(number: number) {
+  return `recentComments:${number}`;
+}
+
+function getStashedComments(number: number): Comment[] {
+  const raw = sessionStorage.getItem(stashedCommentsKey(number));
+  return raw ? JSON.parse(raw) : [];
+}
+
+// A just-posted comment may not show up in listComments yet due to GitHub's
+// indexing lag, so stash it until it appears in a fetch.
+function stashComment(number: number, comment: Comment) {
+  sessionStorage.setItem(stashedCommentsKey(number), JSON.stringify([...getStashedComments(number), comment]));
+}
+
+function pruneStashedComments(number: number, fetched: Comment[]): Comment[] {
+  const remaining = getStashedComments(number).filter((c) => !fetched.some((f) => f.id === c.id));
+  if (remaining.length) {
+    sessionStorage.setItem(stashedCommentsKey(number), JSON.stringify(remaining));
+  } else {
+    sessionStorage.removeItem(stashedCommentsKey(number));
+  }
+  return remaining;
+}
+
 export default function TicketDetail({ number }: { number: number }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -36,7 +61,8 @@ export default function TicketDetail({ number }: { number: number }) {
   async function refresh() {
     const [t, c] = await Promise.all([getTicket(number), listComments(number)]);
     setTicket(t);
-    setComments(c);
+    const stashed = pruneStashedComments(number, c);
+    setComments([...c, ...stashed]);
   }
 
   useEffect(() => {
@@ -75,14 +101,15 @@ export default function TicketDetail({ number }: { number: number }) {
       return;
     }
     withBusy(async () => {
-      setTicket(await transitionTicketStatus({ number: current.number, labels: current.labels, newStatus }));
+      const { ticket: updated } = await transitionTicketStatus({ number: current.number, labels: current.labels, newStatus });
+      setTicket(updated);
     });
   }
 
   function confirmResolve() {
     if (!resolutionNote.trim() || !pendingStatus) return;
     withBusy(async () => {
-      const updated = await transitionTicketStatus({
+      const { ticket: updated, comment } = await transitionTicketStatus({
         number: current.number,
         labels: current.labels,
         newStatus: pendingStatus,
@@ -91,7 +118,10 @@ export default function TicketDetail({ number }: { number: number }) {
       setTicket(updated);
       setPendingStatus(null);
       setResolutionNote('');
-      setComments(await listComments(number));
+      if (comment) {
+        setComments((prev) => [...prev, comment]);
+        stashComment(current.number, comment);
+      }
     });
   }
 
@@ -254,6 +284,7 @@ export default function TicketDetail({ number }: { number: number }) {
                 isRequester: currentUser === ticket.author,
               });
               setComments((prev) => [...prev, result.comment]);
+              stashComment(current.number, result.comment);
               if (result.ticket) setTicket(result.ticket);
               setNewComment('');
             })
