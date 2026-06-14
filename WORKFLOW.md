@@ -142,3 +142,16 @@ While filling out a new ticket, the form does live client-side keyword
 matching against article titles/bodies and shows a "Related articles" box if
 anything looks relevant, so a requester can self-serve instead of filing a
 ticket.
+
+## Markdown and images
+
+Ticket descriptions, ticket comments, and KB articles all support Markdown
+(headings, lists, links, code blocks, etc.), rendered the same way
+everywhere.
+
+You can paste or drop an image directly into any of these fields. It's
+uploaded to the data repo (`images/` folder) and referenced in the Markdown
+as `repo-asset:images/<file>`. This app resolves those references and renders
+the image inline. Note that this is an app-specific convention — if you view
+the underlying issue directly on github.com, pasted images will show as
+broken links; they only render inside this app.

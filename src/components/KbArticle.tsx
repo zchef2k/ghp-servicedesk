@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { marked } from 'marked';
 import { getArticle, updateArticle, type Ticket } from '../lib/github';
 import { findLabel, replaceLabel, CATEGORY_LABELS } from '../lib/labels';
+import { useImagePaste } from '../lib/useImagePaste';
 import { appPath } from '../lib/url';
+import Markdown from './Markdown';
 
 export default function KbArticle({ number }: { number: number }) {
   const [article, setArticle] = useState<Ticket | null>(null);
@@ -12,6 +13,7 @@ export default function KbArticle({ number }: { number: number }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [category, setCategory] = useState<string>('');
+  const { textareaRef, onPaste, onDrop, uploading } = useImagePaste(setBody);
 
   useEffect(() => {
     getArticle(number)
@@ -61,11 +63,17 @@ export default function KbArticle({ number }: { number: number }) {
           <label className="block">
             <span className="mb-1 block text-sm font-medium">Body (Markdown)</span>
             <textarea
+              ref={textareaRef}
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              onPaste={onPaste}
+              onDrop={onDrop}
               rows={12}
               className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
             />
+            <span className="mt-1 block text-xs text-slate-500">
+              Paste or drop images to attach them.
+            </span>
           </label>
 
           <label className="block">
@@ -86,11 +94,11 @@ export default function KbArticle({ number }: { number: number }) {
 
           <div className="flex gap-2">
             <button
-              disabled={busy || !title.trim()}
+              disabled={busy || !title.trim() || uploading > 0}
               onClick={save}
               className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
             >
-              {busy ? 'Saving…' : 'Save'}
+              {uploading > 0 ? 'Uploading image…' : busy ? 'Saving…' : 'Save'}
             </button>
             <button
               disabled={busy}
@@ -118,10 +126,9 @@ export default function KbArticle({ number }: { number: number }) {
             </button>
           </div>
 
-          <div
-            className="kb-article mt-4 rounded-md border border-slate-200 bg-white p-4"
-            dangerouslySetInnerHTML={{ __html: marked.parse(article.body || '*No content.*', { async: false }) }}
-          />
+          <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
+            <Markdown text={article.body} />
+          </div>
         </>
       )}
     </div>

@@ -6,8 +6,7 @@ import { appPath } from '../../lib/url';
 export default function QueuePage() {
   return (
     <AuthGate>
-      <MetricsDashboard />
-      <div className="mb-3 mt-6 flex items-center justify-between gap-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Tickets</h1>
         <a
           href={appPath('new')}
@@ -16,6 +15,8 @@ export default function QueuePage() {
           New ticket
         </a>
       </div>
+      <MetricsDashboard />
+      <h2 className="mb-3 mt-6 text-lg font-semibold">Queue</h2>
       <TicketQueue />
     </AuthGate>
   );

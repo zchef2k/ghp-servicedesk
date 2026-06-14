@@ -23,7 +23,9 @@ import {
   type StatusLabel,
 } from '../lib/labels';
 import { ageHours, formatDuration, isOverdue, slaHours } from '../lib/sla';
+import { useImagePaste } from '../lib/useImagePaste';
 import { appPath } from '../lib/url';
+import Markdown from './Markdown';
 
 function stashedCommentsKey(number: number) {
   return `recentComments:${number}`;
@@ -60,6 +62,7 @@ export default function TicketDetail({ number }: { number: number }) {
   const [transitionNote, setTransitionNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { textareaRef, onPaste, onDrop, uploading } = useImagePaste(setNewComment);
 
   async function refresh() {
     const [t, c] = await Promise.all([getTicket(number), listComments(number)]);
@@ -153,8 +156,8 @@ export default function TicketDetail({ number }: { number: number }) {
         )}
       </p>
 
-      <div className="mt-4 whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-4">
-        {ticket.body || <span className="text-slate-400">No description provided.</span>}
+      <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
+        <Markdown text={ticket.body} />
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -290,16 +293,19 @@ export default function TicketDetail({ number }: { number: number }) {
         {comments.map((c) => (
           <li key={c.id} className="rounded-md border border-slate-200 bg-white p-3">
             <p className="text-sm font-medium">{c.author}</p>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{c.body}</p>
+            <Markdown text={c.body} />
           </li>
         ))}
       </ul>
 
       <div className="mt-3">
         <textarea
+          ref={textareaRef}
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Add a comment…"
+          onPaste={onPaste}
+          onDrop={onDrop}
+          placeholder="Add a comment… (Markdown supported — paste or drop images to attach them)"
           rows={3}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
@@ -309,7 +315,7 @@ export default function TicketDetail({ number }: { number: number }) {
           </p>
         )}
         <button
-          disabled={busy || !newComment.trim()}
+          disabled={busy || !newComment.trim() || uploading > 0}
           onClick={() =>
             withBusy(async () => {
               const result = await addComment({
@@ -326,7 +332,7 @@ export default function TicketDetail({ number }: { number: number }) {
           }
           className="mt-2 rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
         >
-          Comment
+          {uploading > 0 ? 'Uploading image…' : 'Comment'}
         </button>
       </div>
     </div>

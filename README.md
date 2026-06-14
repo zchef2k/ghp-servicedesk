@@ -67,6 +67,16 @@ for l in status:open status:pending-approval status:in-progress status:waiting-o
 done
 ```
 
+### Pasted images
+
+Images pasted or dropped into ticket/comment/article fields are committed to
+this repo under `images/` via the Git Data API. Collaborators' OAuth tokens
+already have `repo` write access here (same as everything else), so no extra
+setup is needed — the first paste just adds commits to `images/` on `main`.
+These images render inline in the app via an authenticated fetch; they won't
+display if the issue is viewed directly on github.com (see
+[WORKFLOW.md](WORKFLOW.md#markdown-and-images)).
+
 ### 2. Create a GitHub OAuth App
 
 GitHub → Settings → Developer settings → OAuth Apps → New OAuth App:

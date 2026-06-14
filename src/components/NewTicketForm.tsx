@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createTicket, listArticles, type Ticket } from '../lib/github';
 import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, TYPE_LABELS } from '../lib/labels';
 import { searchArticles } from '../lib/kbSearch';
+import { useImagePaste } from '../lib/useImagePaste';
 import { appPath } from '../lib/url';
 
 export default function NewTicketForm() {
@@ -13,6 +14,7 @@ export default function NewTicketForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [articles, setArticles] = useState<Ticket[]>([]);
+  const { textareaRef, onPaste, onDrop, uploading } = useImagePaste(setBody);
 
   useEffect(() => {
     listArticles().then(setArticles).catch(() => {});
@@ -55,13 +57,19 @@ export default function NewTicketForm() {
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium">Description</span>
+        <span className="mb-1 block text-sm font-medium">Description (Markdown)</span>
         <textarea
+          ref={textareaRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onPaste={onPaste}
+          onDrop={onDrop}
           rows={6}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
+        <span className="mt-1 block text-xs text-slate-500">
+          Markdown supported — paste or drop images to attach them.
+        </span>
       </label>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -130,10 +138,10 @@ export default function NewTicketForm() {
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || uploading > 0}
         className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
       >
-        {submitting ? 'Submitting…' : 'Submit ticket'}
+        {uploading > 0 ? 'Uploading image…' : submitting ? 'Submitting…' : 'Submit ticket'}
       </button>
     </form>
   );
