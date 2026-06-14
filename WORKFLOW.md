@@ -75,3 +75,27 @@ record of what was done.
 `priority:*` and `category:*` labels are independent of the lifecycle above
 and can be changed freely at any time — they're metadata for triage/reporting,
 not workflow state.
+
+## SLA targets
+
+Each priority has a resolution-time target, defined in
+[`src/lib/sla.ts`](src/lib/sla.ts) (`SLA_HOURS`):
+
+| Priority | Target |
+| :-- | :-- |
+| `priority:urgent` | 4 hours |
+| `priority:high` | 1 day |
+| `priority:medium` | 3 days |
+| `priority:low` | 7 days |
+
+A ticket's "age" runs from creation to now (or to its close time once
+resolved). Any unresolved ticket older than its priority's target is flagged
+**Overdue** in the queue and on the ticket page. Overdue is informational only
+— it doesn't block any transition.
+
+## Metrics
+
+The `/metrics` page summarizes the current queue: open-ticket counts by status
+and priority, the overdue count, average age of open tickets, and resolution
+throughput (tickets resolved in the last 7/30 days, average resolution time).
+It's a read-only view over the same data — no separate tracking is needed.

@@ -26,6 +26,7 @@ export interface Ticket {
   assignees: string[];
   createdAt: string;
   updatedAt: string;
+  closedAt: string | null;
   author: string;
 }
 
@@ -39,6 +40,7 @@ function toTicket(issue: any): Ticket {
     assignees: (issue.assignees ?? []).map((a: any) => a.login),
     createdAt: issue.created_at,
     updatedAt: issue.updated_at,
+    closedAt: issue.closed_at ?? null,
     author: issue.user?.login ?? 'unknown',
   };
 }

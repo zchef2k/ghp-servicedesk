@@ -20,6 +20,7 @@ import {
   CATEGORY_LABELS,
   type StatusLabel,
 } from '../lib/labels';
+import { ageHours, formatDuration, isOverdue, slaHours } from '../lib/sla';
 import { appPath } from '../lib/url';
 
 function stashedCommentsKey(number: number) {
@@ -92,6 +93,8 @@ export default function TicketDetail({ number }: { number: number }) {
   const priority = findLabel(current.labels, PRIORITY_LABELS);
   const category = findLabel(current.labels, CATEGORY_LABELS);
   const statusOptions = status ? [status, ...nextStatuses(status)] : STATUS_LABELS;
+  const overdue = isOverdue(current);
+  const target = slaHours(current);
 
   function handleStatusChange(newStatus: StatusLabel) {
     if (newStatus === status) return;
@@ -136,6 +139,14 @@ export default function TicketDetail({ number }: { number: number }) {
       </h1>
       <p className="mt-1 text-sm text-slate-500">
         Opened by {ticket.author} · {ticket.state === 'closed' ? 'Closed' : 'Open'}
+        {' · '}
+        {ticket.state === 'closed' ? 'Took' : 'Open for'} {formatDuration(ageHours(ticket))}
+        {target !== undefined && ` (target: ${formatDuration(target)})`}
+        {overdue && (
+          <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+            Overdue
+          </span>
+        )}
       </p>
 
       <div className="mt-4 whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-4">

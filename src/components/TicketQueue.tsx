@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listTickets, type Ticket } from '../lib/github';
 import { findLabel, PRIORITY_LABELS, STATUS_LABELS } from '../lib/labels';
+import { ageHours, formatDuration, isOverdue } from '../lib/sla';
 import { appPath } from '../lib/url';
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -88,6 +89,7 @@ export default function TicketQueue() {
           {tickets.map((ticket) => {
             const status = findLabel(ticket.labels, STATUS_LABELS);
             const priority = findLabel(ticket.labels, PRIORITY_LABELS);
+            const overdue = isOverdue(ticket);
             return (
               <li key={ticket.number}>
                 <a
@@ -101,13 +103,21 @@ export default function TicketQueue() {
                     <p className="text-sm text-slate-500">
                       {ticket.state === 'closed' ? 'Closed' : status?.replace('status:', '') ?? 'open'}
                       {ticket.assignees.length > 0 && ` · ${ticket.assignees.join(', ')}`}
+                      {` · ${formatDuration(ageHours(ticket))} old`}
                     </p>
                   </div>
-                  {priority && (
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[priority] ?? ''}`}>
-                      {priority.replace('priority:', '')}
-                    </span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {overdue && (
+                      <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+                        Overdue
+                      </span>
+                    )}
+                    {priority && (
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[priority] ?? ''}`}>
+                        {priority.replace('priority:', '')}
+                      </span>
+                    )}
+                  </div>
                 </a>
               </li>
             );
